@@ -1,0 +1,44 @@
+import network
+import espnow
+import machine
+import i2c_lcd
+import time
+from machine import Pin, I2C
+
+# A WLAN interface must be active to send()/recv()
+sta = network.WLAN(network.STA_IF)  # Or network.AP_IF
+sta.active(True)
+sta.disconnect()  # For ESP8266, if applicable
+
+# Initialize ESP-NOW
+esp = espnow.ESPNow()
+esp.active(True)
+
+# Set up I2C for LCD screen (using default pins GPIO 21 and 22)
+i2c = I2C(0, scl=Pin(22), sda=Pin(21), freq=400000)
+
+# Initialize the LCD (assumes 20x4 display, change size if necessary)
+lcd = i2c_lcd.Lcd(i2c, 0x3F, 20, 4)  # 0x3F is the I2C address (common for many LCDs)
+
+# Display startup message
+lcd.clear()
+lcd.putstr("Esperando comandos...")
+
+while True:
+    _, msg = esp.recv()  # Receive message from ESP-NOW
+    if msg:  # msg == None if timeout in recv()
+        if msg == b'ledOn':
+            print("Encendiendo pantalla LCD")
+            lcd.clear()
+            lcd.putstr("Pantalla encendida!")
+        elif msg == b'ledOff':
+            print("Apagando pantalla LCD")
+            lcd.clear()
+            lcd.putstr("Pantalla apagada!")
+        else:
+            print(f"Mensaje desconocido! {msg}")
+            lcd.clear()
+            lcd.putstr(f"Error: {msg}")
+    
+    # Optional: Add a small delay to prevent 100% CPU usage
+    time.sleep(0.1)
